@@ -1,10 +1,28 @@
+export type RecurrenceRule =
+  | 'none'
+  | 'daily'
+  | 'weekdays'
+  | 'weekly'
+  | 'biweekly'
+  | 'monthly'
+  /** arbitrary weekdays chosen in the form calendar (see recurrenceDays) */
+  | 'custom'
+
 export interface Event {
   id: string
   title: string
   description?: string
   category?: string
+  /** emoji shown on the trail, details and lists */
+  icon: string
   /** hex color used in lists and the calendar (see utils/colors.ts) */
   color: string
+  /** planned length in minutes, null = not set */
+  durationMinutes: number | null
+  /** how the selected dates repeat */
+  recurrence: RecurrenceRule
+  /** 0 = Monday … 6 = Sunday, only used when recurrence is 'custom' */
+  recurrenceDays: number[]
   createdAt: string
   updatedAt: string
 }
@@ -18,6 +36,8 @@ export interface EventOccurrence {
   time: string
   alarmEnabled: boolean
   alarmMinutesBefore: number
+  /** ISO timestamp of when the user completed it, null = pending */
+  doneAt: string | null
 }
 
 export interface EventWithOccurrences extends Event {
@@ -50,9 +70,14 @@ export interface EventInput {
   title: string
   description: string
   category: string
+  icon: string
   /** hex color */
   color: string
-  /** selected dates YYYY-MM-DD */
+  durationMinutes: number | null
+  recurrence: RecurrenceRule
+  /** weekdays for the 'custom' rule, 0 = Monday … 6 = Sunday */
+  recurrenceDays: number[]
+  /** selected dates YYYY-MM-DD (the first one anchors a recurrence rule) */
   dates: string[]
   /** HH:mm applied to every selected date */
   time: string

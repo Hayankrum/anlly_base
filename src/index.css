@@ -1,17 +1,31 @@
 :root {
-  --bg: #ffffff;
-  --surface: #f7f7f9;
-  --text: #17171c;
-  --text-muted: #6d6d78;
-  --border: #e6e6ec;
+  /* light theme */
+  color-scheme: light;
+
+  --bg: #f4f6fb;
+  --bg-elevated: #ffffff;
+  --surface: #eef1f8;
+  --surface-2: #e4e9f4;
+  --text: #171a22;
+  --text-muted: #666e80;
+  --border: #e2e6f0;
   --accent: #2f6fed;
+  /* tom do destaque no tema escuro (o azul é o padrão) */
+  --accent-dark: #6f9bff;
+  --accent-strong: color-mix(in srgb, var(--accent) 78%, #000);
   --accent-contrast: #ffffff;
-  --accent-soft: rgba(47, 111, 237, 0.12);
+  --accent-soft: color-mix(in srgb, var(--accent) 12%, transparent);
+  --done: #22a06b;
+  --done-strong: #178054;
+  --done-soft: rgba(34, 160, 107, 0.14);
+  --gold: #f2a93b;
   --danger: #d64545;
   --warn-bg: #fff7e6;
   --warn-border: #f0d49a;
   --warn-text: #7a5b12;
-  --shadow: 0 8px 24px rgba(15, 17, 26, 0.12);
+  --shadow-sm: 0 1px 2px rgba(16, 20, 34, 0.06), 0 2px 8px rgba(16, 20, 34, 0.05);
+  --shadow: 0 10px 30px rgba(16, 20, 34, 0.12);
+  --node-ledge: rgba(16, 20, 34, 0.18);
 
   --sans: system-ui, 'Segoe UI', Roboto, -apple-system, sans-serif;
   --mono: ui-monospace, 'SF Mono', Consolas, monospace;
@@ -21,27 +35,92 @@
   line-height: 1.45;
   color: var(--text);
   background: var(--bg);
-  color-scheme: light dark;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
 }
 
+/* Paletas de destaque — tema claro (o azul já vem no :root). */
+:root[data-accent='green'] {
+  --accent: #16a34a;
+  --accent-dark: #4ade80;
+}
+
+:root[data-accent='red'] {
+  --accent: #dc2626;
+  --accent-dark: #ff8e8e;
+}
+
+:root[data-accent='yellow'] {
+  --accent: #eab308;
+  --accent-dark: #fcd34d;
+  --accent-contrast: #2c2200;
+}
+
+:root[data-accent='brown'] {
+  --accent: #8b5a2b;
+  --accent-dark: #d9a06b;
+}
+
+:root[data-accent='pink'] {
+  --accent: #db2777;
+  --accent-dark: #f9a8d4;
+}
+
+/* Dark tokens, either chosen explicitly or following the system. */
 @media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #101114;
-    --surface: #1a1b20;
-    --text: #ececf0;
-    --text-muted: #9a9aa6;
-    --border: #2a2b32;
-    --accent: #6f9bff;
-    --accent-contrast: #0d1220;
-    --accent-soft: rgba(111, 155, 255, 0.16);
+  :root:not([data-theme='light']) {
+    color-scheme: dark;
+
+    --bg: #0e1015;
+    --bg-elevated: #171a21;
+    --surface: #1e2129;
+    --surface-2: #262a34;
+    --text: #eceef4;
+    --text-muted: #99a1b4;
+    --border: #2a2e39;
+    --accent: var(--accent-dark, #6f9bff);
+    --accent-strong: color-mix(in srgb, var(--accent) 72%, #fff);
+    --accent-contrast: #0b1020;
+    --accent-soft: color-mix(in srgb, var(--accent) 18%, transparent);
+    --done: #45c58d;
+    --done-strong: #35a876;
+    --done-soft: rgba(69, 197, 141, 0.16);
+    --gold: #f5bc5b;
     --danger: #ff7a7a;
     --warn-bg: #2a2413;
     --warn-border: #5a4a1e;
     --warn-text: #e8cf8f;
-    --shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4), 0 2px 8px rgba(0, 0, 0, 0.3);
+    --shadow: 0 10px 30px rgba(0, 0, 0, 0.55);
+    --node-ledge: rgba(0, 0, 0, 0.45);
   }
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+
+  --bg: #0e1015;
+  --bg-elevated: #171a21;
+  --surface: #1e2129;
+  --surface-2: #262a34;
+  --text: #eceef4;
+  --text-muted: #99a1b4;
+  --border: #2a2e39;
+  --accent: var(--accent-dark, #6f9bff);
+  --accent-strong: color-mix(in srgb, var(--accent) 72%, #fff);
+  --accent-contrast: #0b1020;
+  --accent-soft: color-mix(in srgb, var(--accent) 18%, transparent);
+  --done: #45c58d;
+  --done-strong: #35a876;
+  --done-soft: rgba(69, 197, 141, 0.16);
+  --gold: #f5bc5b;
+  --danger: #ff7a7a;
+  --warn-bg: #2a2413;
+  --warn-border: #5a4a1e;
+  --warn-text: #e8cf8f;
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4), 0 2px 8px rgba(0, 0, 0, 0.3);
+  --shadow: 0 10px 30px rgba(0, 0, 0, 0.55);
+  --node-ledge: rgba(0, 0, 0, 0.45);
 }
 
 * {
@@ -79,16 +158,30 @@ h2,
 h3,
 p,
 ul,
+ol,
+dl,
+dt,
+dd,
 fieldset,
 legend {
   margin: 0;
   padding: 0;
 }
 
-ul {
+ul,
+ol {
   list-style: none;
 }
 
 fieldset {
   border: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
 }

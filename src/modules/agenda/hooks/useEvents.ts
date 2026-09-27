@@ -17,7 +17,10 @@ interface UseEventsResult {
 }
 
 function messageOf(err: unknown): string {
-  return err instanceof Error ? err.message : 'Erro inesperado.'
+  if (typeof err === 'string') return err
+  if (err && typeof err === 'object' && 'message' in err && typeof err.message === 'string')
+    return err.message
+  return 'Erro inesperado.'
 }
 
 export function useEvents(): UseEventsResult {

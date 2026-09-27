@@ -18,7 +18,13 @@ export interface AgendaDayItem {
   title: string
   description?: string
   category?: string
+  /** emoji of the event */
+  icon: string
+  /** planned length in minutes, null = not set */
+  durationMinutes: number | null
   /** hex color of the event */
   color: string
+  /** true when the occurrence was completed */
+  done: boolean
   alarmEnabled?: boolean
 }

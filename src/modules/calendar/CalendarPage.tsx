@@ -1,83 +1,62 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { MonthCalendar } from './components/MonthCalendar'
-import { WeekView } from './components/WeekView'
-import { DayNavigator } from './components/DayNavigator'
-import { YearView } from './components/YearView'
-import { AgendaDayList } from './components/AgendaDayList'
-import { AlarmPermissionNotice } from '../../components/Alarm/AlarmPermissionNotice'
-import { EventPage } from './components/EventPage'
-import { useCalendar } from './hooks/useCalendar'
-import { useEvents } from './hooks/useEvents'
+import { MonthCalendar } from '../agenda/components/MonthCalendar'
+import { WeekView } from '../agenda/components/WeekView'
+import { DayNavigator } from '../agenda/components/DayNavigator'
+import { YearView } from '../agenda/components/YearView'
+import { DayTimeline } from './DayTimeline'
+import { useCalendar } from '../agenda/hooks/useCalendar'
+import { buildAgendaItems, compareAgendaItems } from '../agenda/items'
+import { useJourney } from '../../hooks/useJourney'
 import { useNavigation } from '../../navigation/useNavigation'
-import type { EventInput } from '../../types/event'
+import type { AgendaDayItem } from '../../types/agenda'
 
-type AgendaView = 'day' | 'week' | 'month'
+type CalendarView = 'day' | 'week' | 'month'
 
-const VIEWS: { id: AgendaView; label: string }[] = [
+const VIEWS: { id: CalendarView; label: string }[] = [
   { id: 'day', label: 'Dia' },
   { id: 'week', label: 'Semana' },
   { id: 'month', label: 'Mês' },
 ]
 
-export function AgendaPage() {
-  const { current } = useNavigation()
-  const { events, loading, error, saveEvent, removeEvent } = useEvents()
+/** Day browsing: Dia / Semana / Mês / Ano plus the list of the selected day. */
+export function CalendarPage() {
+  const { current, push } = useNavigation()
+  const { events, error, loading } = useJourney()
 
-  const calendar = useCalendar(
-    { events },
-    { initialDate: current.date },
-  )
+  const calendar = useCalendar({ events }, { initialDate: current.date })
   const goTo = calendar.goTo
   const navDate = current.date
   useEffect(() => {
     if (navDate) goTo(navDate)
   }, [navDate, goTo])
 
-  const [view, setView] = useState<AgendaView>('month')
-  const [creating, setCreating] = useState(false)
-  const [editingEventId, setEditingEventId] = useState<string | null>(null)
+  const [view, setView] = useState<CalendarView>('month')
   const [yearView, setYearView] = useState(false)
 
-  const editingEvent = useMemo(
-    () => events.find((event) => event.id === editingEventId),
-    [events, editingEventId],
+  const items = useMemo(() => buildAgendaItems({ events }), [events])
+
+  const dayItems = useMemo(
+    () => items.filter((item) => item.date === calendar.selectedDate).sort(compareAgendaItems),
+    [items, calendar.selectedDate],
   )
 
-  const openCreate = () => {
-    setEditingEventId(null)
-    setCreating(true)
-  }
-
-  const openEdit = useCallback((eventId: string) => {
-    setCreating(false)
-    setEditingEventId(eventId)
-  }, [])
-
-  const closeSheet = () => {
-    setCreating(false)
-    setEditingEventId(null)
-  }
-
-  const handleSave = async (input: EventInput, eventId?: string) => {
-    await saveEvent(input, eventId)
-  }
-
-  const handleDelete = async (eventId: string) => {
-    await removeEvent(eventId)
-  }
+  const openItem = useCallback(
+    (item: AgendaDayItem) => {
+      push({ area: 'detalhe', eventId: item.refId, occurrenceId: item.id, date: item.date })
+    },
+    [push],
+  )
 
   const selectFromYear = (date: string) => {
     calendar.goTo(date)
     setYearView(false)
   }
 
-  const showSheet = creating || Boolean(editingEvent)
-
   return (
-    <div className="app-shell">
+    <div className="app-shell calendar-shell">
       <header className="area-header">
-        <h1 className="page-title">Agenda</h1>
-        <div className="segmented" role="radiogroup" aria-label="visualização da agenda">
+        <h1 className="page-title">Calendário</h1>
+        <div className="segmented" role="radiogroup" aria-label="visualização do calendário">
           {VIEWS.map((option) => (
             <button
               key={option.id}
@@ -142,33 +121,21 @@ export function AgendaPage() {
         />
       )}
 
-      <AlarmPermissionNotice />
-
       {error && <p className="global-error">{error}</p>}
 
       {!yearView && (
-        <AgendaDayList
-          date={calendar.selectedDate}
-          items={calendar.dayItems}
-          hideHeading={view === 'day'}
-          onOpenItem={openEdit}
-        />
+        <section className="timeline-section">
+          <header className="chart-head">
+            <h2 className="section-title">Mapa de horas</h2>
+            <span className="timeline-date">
+              {view === 'month' ? calendar.selectedDate.split('-').reverse().join('/') : ''}
+            </span>
+          </header>
+          <DayTimeline date={calendar.selectedDate} items={dayItems} onOpenItem={openItem} />
+        </section>
       )}
-
-      <button type="button" className="fab" onClick={openCreate} aria-label="criar evento">
-        +
-      </button>
 
       {loading && <p className="loading-indicator">Carregando…</p>}
-
-      {showSheet && (
-        <EventPage
-          event={editingEvent}
-          onClose={closeSheet}
-          onSave={handleSave}
-          onDelete={handleDelete}
-        />
-      )}
     </div>
   )
 }

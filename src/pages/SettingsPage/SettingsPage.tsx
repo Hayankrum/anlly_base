@@ -1,19 +1,23 @@
 import { useEffect, useState } from 'react'
-import { getName, getVersion } from '@tauri-apps/api/app'
+import { getName } from '@tauri-apps/api/app'
 import { AlarmPermissionNotice } from '../../components/Alarm/AlarmPermissionNotice'
 import { useSettings } from '../../hooks/useSettings'
 import { listRingtones, previewRingtone, type RingtoneInfo } from '../../services/alarm/alarmService'
-import { resyncAllAlarms } from '../../services/alarm/alarmSync'
 import { formatTimeDisplay } from '../../utils/time'
+import { ACCENT_OPTIONS } from '../../utils/theme'
+
+const THEME_OPTIONS: { value: 'auto' | 'light' | 'dark'; label: string }[] = [
+  { value: 'auto', label: 'Auto' },
+  { value: 'light', label: 'Claro' },
+  { value: 'dark', label: 'Escuro' },
+]
 
 export function SettingsPage() {
   const { settings, update } = useSettings()
   const [pickerOpen, setPickerOpen] = useState(false)
   const [ringtones, setRingtones] = useState<RingtoneInfo[] | null>(null)
   const [loadingList, setLoadingList] = useState(false)
-  const [appInfo, setAppInfo] = useState<{ name: string; version: string } | null>(null)
-  const [resyncing, setResyncing] = useState(false)
-  const [resyncMessage, setResyncMessage] = useState<string | null>(null)
+  const [appInfo, setAppInfo] = useState<{ name: string } | null>(null)
 
   // Stop any ringtone preview when leaving the screen or collapsing the list.
   useEffect(() => {
@@ -28,28 +32,15 @@ export function SettingsPage() {
 
   useEffect(() => {
     let active = true
-    void Promise.all([getName(), getVersion()])
-      .then(([name, version]) => {
-        if (active) setAppInfo({ name, version })
+    void getName()
+      .then((name) => {
+        if (active) setAppInfo({ name })
       })
       .catch(() => undefined)
     return () => {
       active = false
     }
   }, [])
-
-  const handleResync = async () => {
-    setResyncing(true)
-    setResyncMessage(null)
-    try {
-      await resyncAllAlarms()
-      setResyncMessage('Alarmes reagendados no sistema.')
-    } catch {
-      setResyncMessage('Não foi possível reagendar os alarmes.')
-    } finally {
-      setResyncing(false)
-    }
-  }
 
   const togglePicker = async () => {
     const next = !pickerOpen
@@ -76,7 +67,50 @@ export function SettingsPage() {
       <h1 className="settings-title">Configurações</h1>
 
       <section className="settings-section">
-        <h2 className="settings-heading">Exibição</h2>
+        <h2 className="settings-heading">Aparência</h2>
+
+        <div className="settings-row">
+          <span className="settings-label">
+            Tema
+            <span className="settings-note">Automático acompanha o sistema.</span>
+          </span>
+          <div className="segmented" role="radiogroup" aria-label="tema">
+            {THEME_OPTIONS.map((option) => (
+              <button
+                key={option.value}
+                type="button"
+                role="radio"
+                aria-checked={settings.theme === option.value}
+                className={`segment${settings.theme === option.value ? ' is-active' : ''}`}
+                onClick={() => void update({ theme: option.value })}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="settings-row settings-row-column">
+          <span className="settings-label">
+            Cor de destaque
+            <span className="settings-note">Substitui o azul em botões, trilha e navegação.</span>
+          </span>
+          <div className="accent-swatches" role="radiogroup" aria-label="cor de destaque">
+            {ACCENT_OPTIONS.map((option) => (
+              <button
+                key={option.value}
+                type="button"
+                role="radio"
+                aria-checked={settings.accentColor === option.value}
+                aria-label={option.label}
+                title={option.label}
+                className={`accent-swatch${settings.accentColor === option.value ? ' is-active' : ''}`}
+                style={{ background: option.swatch }}
+                onClick={() => void update({ accentColor: option.value })}
+              />
+            ))}
+          </div>
+        </div>
 
         <div className="settings-row">
           <span className="settings-label">
@@ -104,6 +138,10 @@ export function SettingsPage() {
             </button>
           </div>
         </div>
+      </section>
+
+      <section className="settings-section">
+        <h2 className="settings-heading">Calendário</h2>
 
         <div className="settings-row">
           <span className="settings-label">
@@ -134,7 +172,22 @@ export function SettingsPage() {
       </section>
 
       <section className="settings-section">
-        <h2 className="settings-heading">Alarme</h2>
+        <h2 className="settings-heading">Notificações</h2>
+
+        <div className="settings-row">
+          <span className="settings-label">
+            Lembretes dos afazeres
+            <span className="settings-note">
+              Disparados no horário configurado, mesmo com o aplicativo fechado.
+            </span>
+          </span>
+        </div>
+
+        <AlarmPermissionNotice />
+      </section>
+
+      <section className="settings-section">
+        <h2 className="settings-heading">Despertador</h2>
 
         <label className="settings-row">
           <span className="settings-label">Vibração</span>
@@ -199,43 +252,32 @@ export function SettingsPage() {
             </ul>
           )}
         </div>
-
-        <div className="settings-row">
-          <span className="settings-label">
-            Reagendar alarmes
-            <span className="settings-note">Recria os alarmes pendentes no sistema.</span>
-          </span>
-          <button
-            type="button"
-            className="button button-ghost"
-            onClick={() => void handleResync()}
-            disabled={resyncing}
-          >
-            {resyncing ? 'Reagendando…' : 'Reagendar'}
-          </button>
-        </div>
-        {resyncMessage && <p className="settings-note settings-message">{resyncMessage}</p>}
       </section>
 
-      <AlarmPermissionNotice />
+      <section className="settings-section">
+        <h2 className="settings-heading">Dados</h2>
+        <div className="settings-row">
+          <span className="settings-label">
+            Armazenamento local
+            <span className="settings-note">
+              Banco SQLite (anlly.db) — os dados ficam no aparelho e não saem dele.
+            </span>
+          </span>
+        </div>
+        <div className="settings-row">
+          <span className="settings-label">
+            Afazeres e agenda
+            <span className="settings-note">
+              A mesma base alimenta a trilha, o calendário e os alarmes.
+            </span>
+          </span>
+        </div>
+      </section>
 
       <section className="settings-section">
         <h2 className="settings-heading">Sobre</h2>
         <div className="settings-row">
-          <span className="settings-label">
-            {appInfo?.name ?? 'Anlly'}
-            <span className="settings-note">
-              {appInfo?.version ? `Versão ${appInfo.version}` : 'Carregando versão…'}
-            </span>
-          </span>
-        </div>
-        <div className="settings-row">
-          <span className="settings-label">
-            Armazenamento
-            <span className="settings-note">
-              Banco SQLite local (anlly.db) — os dados ficam no aparelho.
-            </span>
-          </span>
+          <span className="settings-label">{appInfo?.name ?? 'Anlly'}</span>
         </div>
       </section>
     </div>

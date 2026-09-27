@@ -4,8 +4,12 @@ import type { AreaId } from './areas'
 /** Where a navigation action lands, plus optional deep-link parameters. */
 export interface NavTarget {
   area: AreaId
-  /** YYYY-MM-DD the agenda should open on */
+  /** YYYY-MM-DD the agenda/dashboard should open on */
   date?: string
+  /** afazer whose details page should open */
+  eventId?: string
+  /** specific occurrence (day) shown on the details page */
+  occurrenceId?: string
 }
 
 export interface NavigationContextValue {
@@ -25,9 +29,9 @@ export interface NavigationContextValue {
 }
 
 export const NavigationContext = createContext<NavigationContextValue>({
-  active: 'agenda',
-  stack: [{ area: 'agenda' }],
-  current: { area: 'agenda' },
+  active: 'home',
+  stack: [{ area: 'home' }],
+  current: { area: 'home' },
   canGoBack: false,
   selectArea: () => {},
   push: () => {},

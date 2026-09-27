@@ -8,6 +8,7 @@ import {
   type AppSettings,
   type SettingsContextValue,
 } from './useSettings'
+import { isAccentColor } from '../utils/theme'
 
 function toSettings(raw: Record<string, string>): AppSettings {
   return {
@@ -16,6 +17,8 @@ function toSettings(raw: Record<string, string>): AppSettings {
     ringtoneUri: raw.ringtone_uri ?? '',
     ringtoneName: raw.ringtone_name ?? '',
     weekStartsOn: raw.week_starts_on === 'sun' ? 'sun' : 'mon',
+    theme: raw.theme === 'light' || raw.theme === 'dark' ? raw.theme : 'auto',
+    accentColor: isAccentColor(raw.accent_color) ? raw.accent_color : DEFAULT_SETTINGS.accentColor,
   }
 }
 
@@ -25,12 +28,40 @@ const STORAGE_KEYS: Record<keyof AppSettings, string> = {
   ringtoneUri: 'ringtone_uri',
   ringtoneName: 'ringtone_name',
   weekStartsOn: 'week_starts_on',
+  theme: 'theme',
+  accentColor: 'accent_color',
 }
 
 function toStorageValue(key: keyof AppSettings, value: AppSettings[keyof AppSettings]): string {
   if (key === 'timeFormat12h') return value ? '12h' : '24h'
   if (key === 'vibrationEnabled') return value ? '1' : '0'
   return String(value)
+}
+
+/** Applies the chosen theme to <html>; 'auto' lets the CSS media query decide. */
+function applyTheme(theme: AppSettings['theme']): void {
+  if (typeof document === 'undefined') return
+  const root = document.documentElement
+  if (theme === 'auto') root.removeAttribute('data-theme')
+  else root.setAttribute('data-theme', theme)
+  try {
+    // Mirror so index.html can paint the right theme before the DB loads.
+    localStorage.setItem('anlly.theme', theme)
+  } catch {
+    /* private mode */
+  }
+}
+
+/** Applies the chosen accent color to <html> (CSS reads data-accent). */
+function applyAccent(accent: AppSettings['accentColor']): void {
+  if (typeof document === 'undefined') return
+  document.documentElement.setAttribute('data-accent', accent)
+  try {
+    // Mirror so index.html can paint the right accent before the DB loads.
+    localStorage.setItem('anlly.accent', accent)
+  } catch {
+    /* private mode */
+  }
 }
 
 /** Keeps native alarm prefs (sound/vibration/12h) in sync with the DB. */
@@ -64,6 +95,8 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
         const loaded = toSettings(raw)
         settingsRef.current = loaded
         setSettings(loaded)
+        applyTheme(loaded.theme)
+        applyAccent(loaded.accentColor)
         pushNative(loaded)
         // Native alarms live outside the app process: rebuild them from the DB.
         pushAlarms()
@@ -79,6 +112,8 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     const next = { ...settingsRef.current, ...patch }
     settingsRef.current = next
     setSettings(next)
+    applyTheme(next.theme)
+    applyAccent(next.accentColor)
     try {
       for (const key of Object.keys(patch) as (keyof AppSettings)[]) {
         await writeSetting(STORAGE_KEYS[key], toStorageValue(key, next[key]))

@@ -10,6 +10,18 @@
     <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
     <meta name="theme-color" content="#101114" media="(prefers-color-scheme: dark)" />
     <title>Anlly</title>
+      <script>
+        // Paint the saved theme before React/SQLite load, so there is no flash.
+        try {
+          var t = localStorage.getItem('anlly.theme')
+          if (t === 'light' || t === 'dark') document.documentElement.setAttribute('data-theme', t)
+        } catch (e) {}
+        try {
+          var a = localStorage.getItem('anlly.accent')
+          if (/^(blue|green|red|yellow|brown|pink)$/.test(a || ''))
+            document.documentElement.setAttribute('data-accent', a)
+        } catch (e) {}
+      </script>
   </head>
   <body>
     <div id="root"></div>

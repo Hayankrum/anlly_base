@@ -1,4 +1,5 @@
 import { createContext, useContext } from 'react'
+import { DEFAULT_ACCENT, type AccentColor } from '../utils/theme'
 
 export interface AppSettings {
   /** true = 12h (02:00 PM), false = 24h (14:00) */
@@ -11,6 +12,10 @@ export interface AppSettings {
   ringtoneName: string
   /** 'mon' = week starts Monday (pt-BR), 'sun' = week starts Sunday */
   weekStartsOn: 'mon' | 'sun'
+  /** 'auto' follows the system preference */
+  theme: 'auto' | 'light' | 'dark'
+  /** cor de destaque usada em botões, trilha e navegação */
+  accentColor: AccentColor
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {
@@ -19,6 +24,8 @@ export const DEFAULT_SETTINGS: AppSettings = {
   ringtoneUri: '',
   ringtoneName: '',
   weekStartsOn: 'mon',
+  theme: 'auto',
+  accentColor: DEFAULT_ACCENT,
 }
 
 export interface SettingsContextValue {

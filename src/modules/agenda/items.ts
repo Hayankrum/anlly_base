@@ -14,7 +14,10 @@ export function buildAgendaItems(sources: CalendarSources): AgendaDayItem[] {
         title: event.title,
         description: event.description,
         category: event.category,
+        icon: event.icon,
+        durationMinutes: event.durationMinutes,
         color: event.color,
+        done: Boolean(occurrence.doneAt),
         alarmEnabled: occurrence.alarmEnabled,
       })
     }

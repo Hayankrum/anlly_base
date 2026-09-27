@@ -5,7 +5,9 @@ import {
 } from '../utils/dates'
 import { isValidTime } from '../utils/time'
 import { normalizeColor } from '../utils/colors'
+import { normalizeIcon } from '../utils/icons'
 import { newId } from '../utils/id'
+import { expandRecurrence, normalizeWeekdays } from '../utils/recurrence'
 import * as storage from './storage/events'
 import {
   buildAlarmRequest,
@@ -22,13 +24,19 @@ import type {
 } from '../types/event'
 
 export function validateEventInput(input: EventInput): string | null {
-  if (!input.title.trim()) return 'Informe um título para o evento.'
+  if (!input.title.trim()) return 'Informe um título para o afazer.'
   if (input.dates.length === 0) return 'Selecione pelo menos uma data.'
   if (input.dates.some((d) => !isValidDate(d))) return 'Data inválida.'
   if (new Set(input.dates).size !== input.dates.length) return 'Há datas duplicadas.'
-  if (!isValidTime(input.time)) return 'Informe um horário válido (HH:mm).'
+  if (!isValidTime(input.time)) return 'Informe um horário válido (ex.: 17:00).'
+  if (input.recurrence === 'custom' && normalizeWeekdays(input.recurrenceDays).length === 0) {
+    return 'Marque pelo menos um dia da semana para repetir.'
+  }
+  if (input.durationMinutes !== null && input.durationMinutes < 0) {
+    return 'Duração inválida.'
+  }
   if (input.alarmEnabled && (input.alarmMinutesBefore < 0 || !Number.isFinite(input.alarmMinutesBefore))) {
-    return 'Configuração de alarme inválida.'
+    return 'Configuração de lembrete inválida.'
   }
   return null
 }
@@ -38,18 +46,22 @@ function sortedDates(dates: string[]): string[] {
 }
 
 function buildOccurrences(eventId: string, input: EventInput): EventOccurrence[] {
-  return sortedDates(input.dates).map((date) => ({
-    id: newId(),
-    eventId,
-    date,
-    time: input.time,
-    alarmEnabled: input.alarmEnabled,
-    alarmMinutesBefore: input.alarmMinutesBefore,
-  }))
+  return expandRecurrence(sortedDates(input.dates), input.recurrence, input.recurrenceDays).map(
+    (date) => ({
+      id: newId(),
+      eventId,
+      date,
+      time: input.time,
+      alarmEnabled: input.alarmEnabled,
+      alarmMinutesBefore: input.alarmMinutesBefore,
+      doneAt: null,
+    }),
+  )
 }
 
+/** Completed occurrences never reach the native scheduler. */
 function shouldSchedule(occ: EventOccurrence): boolean {
-  return occ.alarmEnabled && !isPastOccurrence(occ.date, occ.time)
+  return occ.alarmEnabled && !occ.doneAt && !isPastOccurrence(occ.date, occ.time)
 }
 
 export function buildEventAlarmRequests(events: EventWithOccurrences[]): AlarmRequest[] {
@@ -82,7 +94,11 @@ export async function createEvent(input: EventInput): Promise<EventWithOccurrenc
     title: input.title.trim(),
     description: input.description.trim() || undefined,
     category: input.category.trim() || undefined,
+    icon: normalizeIcon(input.icon),
     color: normalizeColor(input.color),
+    durationMinutes: input.durationMinutes,
+    recurrence: input.recurrence,
+    recurrenceDays: normalizeWeekdays(input.recurrenceDays),
     createdAt: now,
     updatedAt: now,
   }
@@ -114,7 +130,11 @@ export async function updateEvent(
 
   const previous = await storage.fetchOccurrencesByEvent(eventId)
   const previousByDate = new Map(previous.map((occ) => [occ.date, occ]))
-  const selectedDates = sortedDates(input.dates)
+  const selectedDates = expandRecurrence(
+    sortedDates(input.dates),
+    input.recurrence,
+    input.recurrenceDays,
+  )
   const selectedSet = new Set(selectedDates)
   const now = new Date().toISOString()
 
@@ -145,6 +165,7 @@ export async function updateEvent(
         time: input.time,
         alarmEnabled: input.alarmEnabled,
         alarmMinutesBefore: input.alarmMinutesBefore,
+        doneAt: null,
       }
       await storage.insertOccurrence(created)
       kept.push(created)
@@ -161,7 +182,11 @@ export async function updateEvent(
     title: input.title.trim(),
     description: input.description.trim() || undefined,
     category: input.category.trim() || undefined,
+    icon: normalizeIcon(input.icon),
     color: normalizeColor(input.color),
+    durationMinutes: input.durationMinutes,
+    recurrence: input.recurrence,
+    recurrenceDays: normalizeWeekdays(input.recurrenceDays),
     updatedAt: now,
   })
 
@@ -179,4 +204,26 @@ export async function updateEvent(
 export async function deleteEvent(eventId: string): Promise<void> {
   await cancelEventAlarms(eventId)
   await storage.deleteEventRecord(eventId)
+}
+
+/**
+ * Marks one occurrence as done or pending.
+ * Completion is only a state change — the single side effect on the alarm
+ * layer is dropping (or restoring) the reminder of that one occurrence.
+ */
+export async function setOccurrenceDone(occurrenceId: string, done: boolean): Promise<void> {
+  if (done) {
+    await storage.updateOccurrenceDone(occurrenceId, new Date().toISOString())
+    await cancelAlarm(occurrenceId)
+    return
+  }
+
+  await storage.updateOccurrenceDone(occurrenceId, null)
+  const events = await storage.fetchEventsWithOccurrences()
+  for (const event of events) {
+    const occ = event.occurrences.find((candidate) => candidate.id === occurrenceId)
+    if (!occ) continue
+    if (shouldSchedule(occ)) await scheduleAlarm(buildAlarmRequest(occ, event.title))
+    return
+  }
 }
