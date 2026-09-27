@@ -1,0 +1,13 @@
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <!-- Base application theme. -->
+    <style name="Theme.app" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+        <!-- Customize your theme here. -->
+    </style>
+
+    <!-- Dark theme for the ringing alarm screen (always dark, like clock alarms). -->
+    <style name="Theme.Anlly.Alarm" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+        <item name="android:windowBackground">#0C0D12</item>
+        <item name="android:statusBarColor">#0C0D12</item>
+        <item name="android:navigationBarColor">#0C0D12</item>
+    </style>
+</resources>
