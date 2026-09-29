@@ -8,6 +8,7 @@ import { normalizeColor } from '../utils/colors'
 import { normalizeIcon } from '../utils/icons'
 import { newId } from '../utils/id'
 import { expandRecurrence, normalizeWeekdays } from '../utils/recurrence'
+import { elapsedMsOf } from '../utils/timer'
 import * as storage from './storage/events'
 import {
   buildAlarmRequest,
@@ -19,6 +20,7 @@ import type {
   AlarmRequest,
   Event,
   EventInput,
+  EventKind,
   EventOccurrence,
   EventWithOccurrences,
 } from '../types/event'
@@ -45,6 +47,11 @@ function sortedDates(dates: string[]): string[] {
   return [...dates].sort()
 }
 
+/** The kind column is defensive: anything but 'timer' behaves as 'normal'. */
+function normalizeKind(kind: EventInput['kind'] | undefined): EventKind {
+  return kind === 'timer' ? 'timer' : 'normal'
+}
+
 function buildOccurrences(eventId: string, input: EventInput): EventOccurrence[] {
   return expandRecurrence(sortedDates(input.dates), input.recurrence, input.recurrenceDays).map(
     (date) => ({
@@ -55,6 +62,8 @@ function buildOccurrences(eventId: string, input: EventInput): EventOccurrence[]
       alarmEnabled: input.alarmEnabled,
       alarmMinutesBefore: input.alarmMinutesBefore,
       doneAt: null,
+      timerStartedAt: null,
+      timerElapsedMs: 0,
     }),
   )
 }
@@ -99,6 +108,7 @@ export async function createEvent(input: EventInput): Promise<EventWithOccurrenc
     durationMinutes: input.durationMinutes,
     recurrence: input.recurrence,
     recurrenceDays: normalizeWeekdays(input.recurrenceDays),
+    kind: normalizeKind(input.kind),
     createdAt: now,
     updatedAt: now,
   }
@@ -166,6 +176,8 @@ export async function updateEvent(
         alarmEnabled: input.alarmEnabled,
         alarmMinutesBefore: input.alarmMinutesBefore,
         doneAt: null,
+        timerStartedAt: null,
+        timerElapsedMs: 0,
       }
       await storage.insertOccurrence(created)
       kept.push(created)
@@ -187,8 +199,18 @@ export async function updateEvent(
     durationMinutes: input.durationMinutes,
     recurrence: input.recurrence,
     recurrenceDays: normalizeWeekdays(input.recurrenceDays),
+    kind: normalizeKind(input.kind),
     updatedAt: now,
   })
+
+  // Leaving the stopwatch kind drops whatever time was recorded.
+  if (normalizeKind(input.kind) !== 'timer') {
+    for (const occ of kept) {
+      if (occ.timerStartedAt || occ.timerElapsedMs > 0) {
+        await storage.updateOccurrenceTimer(occ.id, null, 0)
+      }
+    }
+  }
 
   const title = input.title.trim()
   for (const occ of kept) {
@@ -213,6 +235,12 @@ export async function deleteEvent(eventId: string): Promise<void> {
  */
 export async function setOccurrenceDone(occurrenceId: string, done: boolean): Promise<void> {
   if (done) {
+    // A finished afazer freezes its stopwatch: bank the run that was going.
+    const events = await storage.fetchEventsWithOccurrences()
+    const occ = events.flatMap((event) => event.occurrences).find((o) => o.id === occurrenceId)
+    if (occ?.timerStartedAt) {
+      await storage.updateOccurrenceTimer(occ.id, null, elapsedMsOf(occ))
+    }
     await storage.updateOccurrenceDone(occurrenceId, new Date().toISOString())
     await cancelAlarm(occurrenceId)
     return
@@ -226,4 +254,17 @@ export async function setOccurrenceDone(occurrenceId: string, done: boolean): Pr
     if (shouldSchedule(occ)) await scheduleAlarm(buildAlarmRequest(occ, event.title))
     return
   }
+}
+
+/**
+ * Persists the stopwatch state of one occurrence:
+ * `startedAt` = ISO timestamp of the run in progress (null while paused) and
+ * `elapsedMs` = banked time accumulated so far.
+ */
+export async function setOccurrenceTimer(
+  occurrenceId: string,
+  startedAt: string | null,
+  elapsedMs: number,
+): Promise<void> {
+  await storage.updateOccurrenceTimer(occurrenceId, startedAt, Math.max(0, Math.round(elapsedMs)))
 }

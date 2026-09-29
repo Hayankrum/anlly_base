@@ -633,6 +633,68 @@
   gap: 8px;
 }
 
+/* Popup de permissão, visto em qualquer tela. */
+.permission-overlay {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(8, 9, 14, 0.5);
+  z-index: 40;
+}
+
+.permission-modal {
+  width: 100%;
+  max-width: 380px;
+  padding: 18px;
+  border: 1px solid var(--warn-border);
+  border-radius: 16px;
+  background: var(--warn-bg);
+  color: var(--warn-text);
+  box-shadow: var(--shadow);
+  animation: permission-pop 0.18s ease-out;
+}
+
+.permission-modal .notice-title {
+  font-size: 16.5px;
+  margin-bottom: 4px;
+}
+
+.permission-modal-lead {
+  font-size: 13.5px;
+  margin-bottom: 10px;
+}
+
+.permission-modal .notice-list {
+  font-size: 14px;
+  margin-bottom: 14px;
+}
+
+.permission-modal .notice-actions {
+  gap: 8px;
+}
+
+.permission-modal .notice-actions .button {
+  flex: 1 1 auto;
+}
+
+.permission-modal-dismiss {
+  width: 100%;
+  margin-top: 12px;
+}
+
+@keyframes permission-pop {
+  from {
+    transform: scale(0.96);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
 /* ---------- Mapa do ano ---------- */
 
 .year-view {
@@ -1414,6 +1476,11 @@
   background: var(--bg-elevated);
   box-shadow: var(--shadow-sm);
   z-index: 3;
+  /* a bolha é um botão: abrir os detalhes ao toque */
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
 }
 
 .trail-bubble.is-right {
@@ -1464,6 +1531,36 @@
 
 .trail-node-row.is-done .trail-bubble-title {
   color: var(--text-muted);
+}
+
+/* A chegada não é clicável — não fingir que é botão. */
+.trail-goal .trail-bubble {
+  cursor: default;
+}
+
+/* ---------- Cronômetro ---------- */
+
+/* Afazer medido por cronômetro: o marcador vira um cubo de cantos arredondados. */
+.trail-node-row.is-timer .trail-node {
+  border-radius: 18px;
+}
+
+.trail-node-row.is-timer.is-next .trail-node::after {
+  border-radius: 24px;
+}
+
+/* Fundo opaco: senão a linha da trilha aparece atrás do contador. */
+.trail-node-row.is-running .trail-node {
+  background: var(--accent-strong);
+  color: var(--accent-contrast);
+  box-shadow: 0 0 0 2px var(--accent);
+}
+
+.trail-timer-value {
+  font-size: 12.5px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.2px;
 }
 
 /* ---------- Toast ---------- */
@@ -1648,6 +1745,71 @@
   font-size: 13px;
   color: var(--text-muted);
   text-align: center;
+}
+
+/* Bloco do cronômetro na página de detalhes. */
+.detail-timer {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 16px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--bg-elevated);
+  text-align: center;
+}
+
+.detail-timer.is-running {
+  border-color: var(--accent);
+}
+
+.detail-timer-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.detail-timer-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.detail-timer-state {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.detail-timer.is-running .detail-timer-state {
+  color: var(--accent);
+}
+
+.detail-timer-value {
+  font-size: 46px;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -1px;
+  font-variant-numeric: tabular-nums;
+}
+
+.detail-timer-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.detail-timer-actions .button {
+  flex: 1;
+}
+
+.detail-timer-note {
+  font-size: 12.5px;
+  color: var(--text-muted);
 }
 
 /* Botão de pressão prolongada */

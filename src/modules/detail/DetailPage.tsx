@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { useHoldToComplete } from '../../hooks/useHoldToComplete'
+import { useTicker } from '../../hooks/useTicker'
 import { useJourney } from '../../hooks/useJourney'
 import { TaskIcon } from '../../components/icons/TaskIcon'
 import { useNavigation } from '../../navigation/useNavigation'
@@ -8,6 +9,7 @@ import { formatDateLong, todayStr, weekdayLabel } from '../../utils/dates'
 import { recurrenceLabel } from '../../utils/recurrence'
 import { reminderLabel } from '../../utils/reminder'
 import { addMinutesToTime, formatDurationLabel, formatTimeDisplay } from '../../utils/time'
+import { elapsedMsOf, formatStopwatch } from '../../utils/timer'
 import type { EventOccurrence, EventWithOccurrences } from '../../types/event'
 
 function ArrowLeftIcon() {
@@ -63,7 +65,8 @@ function Row({ label, value }: RowProps) {
 
 export function DetailPage() {
   const { current, back } = useNavigation()
-  const { events, loading, completeOccurrence, openEdit, removeEvent } = useJourney()
+  const { events, loading, completeOccurrence, toggleTimer, resetTimer, openEdit, removeEvent } =
+    useJourney()
   const { settings } = useSettings()
   const [confirmDelete, setConfirmDelete] = useState(false)
 
@@ -95,6 +98,12 @@ export function DetailPage() {
     },
     disabled: done || !occurrence,
   })
+
+  const isTimer = event?.kind === 'timer'
+  const running = Boolean(occurrence?.timerStartedAt) && !done && isTimer
+  // Keeps the running stopwatch label ticking without touching the app state.
+  const tick = useTicker(1000, running)
+  const elapsed = occurrence ? elapsedMsOf(occurrence, tick) : 0
 
   if (!event || !occurrence) {
     return (
@@ -160,6 +169,9 @@ export function DetailPage() {
           <Row label="Duração" value={formatDurationLabel(event.durationMinutes * 60)} />
         )}
         <Row label="Categoria" value={event.category?.trim() || '—'} />
+        {isTimer && elapsed > 0 && (
+          <Row label="Tempo registrado" value={formatStopwatch(elapsed)} />
+        )}
         <Row label="Repetição" value={recurrenceLabel(event.recurrence, event.recurrenceDays)} />
         <Row
           label="Lembrete"
@@ -171,6 +183,40 @@ export function DetailPage() {
         <section className="detail-description">
           <h2 className="section-title">Descrição</h2>
           <p>{event.description}</p>
+        </section>
+      )}
+
+      {isTimer && (
+        <section className={`detail-timer${running ? ' is-running' : ''}`}>
+          <div className="detail-timer-head">
+            <span className="detail-timer-label">Cronômetro</span>
+            <span className="detail-timer-state">{running ? 'Rodando' : 'Pausado'}</span>
+          </div>
+          <span className="detail-timer-value">{formatStopwatch(elapsed)}</span>
+          {!done && (
+            <div className="detail-timer-actions">
+              <button
+                type="button"
+                className="button button-primary"
+                onClick={() => void toggleTimer(occurrence.id)}
+              >
+                {running ? 'Pausar' : elapsed > 0 ? 'Continuar' : 'Iniciar'}
+              </button>
+              <button
+                type="button"
+                className="button button-ghost"
+                disabled={!running && elapsed === 0}
+                onClick={() => void resetTimer(occurrence.id)}
+              >
+                Zerar
+              </button>
+            </div>
+          )}
+          <p className="detail-timer-note">
+            {done
+              ? 'Tempo medido por cronômetro, guardado ao concluir.'
+              : 'O tempo continua rodando mesmo se você fechar o app.'}
+          </p>
         </section>
       )}
 

@@ -10,6 +10,12 @@ import {
 /** Movement (px) that turns a press into a scroll/pan and cancels the hold. */
 const CANCEL_DISTANCE = 14
 
+/**
+ * Presses shorter than this are taps (they may open the details); anything
+ * longer is treated as a deliberate hold and must never navigate away.
+ */
+const TAP_MS = 350
+
 interface HoldToCompleteOptions {
   /** Fired once the hold reaches 100%. */
   onComplete: () => void
@@ -45,15 +51,16 @@ interface HoldState {
 /**
  * Press-and-hold gesture shared by the trail and the details page.
  *
- * A short tap never completes anything — it only fires `onTap`. The hold must
- * run for `durationMs` without the finger/mouse sliding away, otherwise it
- * resets. Touch, pen and mouse all work because the gesture is driven by
- * pointer events plus window-level move/up listeners.
+ * A short tap never completes anything — it only fires `onTap`, and a hold
+ * never opens the details: releasing before `durationMs` simply cancels. The
+ * hold must run for `durationMs` without the finger/mouse sliding away,
+ * otherwise it resets. Touch, pen and mouse all work because the gesture is
+ * driven by pointer events plus window-level move/up listeners.
  */
 export function useHoldToComplete({
   onComplete,
   onTap,
-  durationMs = 700,
+  durationMs = 3000,
   disabled = false,
 }: HoldToCompleteOptions): HoldToComplete {
   const [progress, setProgress] = useState(0)
@@ -114,10 +121,17 @@ export function useHoldToComplete({
       const move = (pointer: PointerEvent) => {
         const dx = pointer.clientX - state.originX
         const dy = pointer.clientY - state.originY
-        if (Math.hypot(dx, dy) > CANCEL_DISTANCE) end()
+        if (Math.hypot(dx, dy) > CANCEL_DISTANCE) {
+          state.suppressClick = true
+          end()
+        }
       }
       const up = () => {
-        if (!state.done) end()
+        if (state.done) return
+        // Releasing after a long press (or a drag) cancels the hold and must
+        // not count as a tap, otherwise a held finger would open the details.
+        if (performance.now() - state.start >= TAP_MS) state.suppressClick = true
+        end()
       }
       state.move = move
       state.up = up

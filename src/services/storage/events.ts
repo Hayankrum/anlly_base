@@ -1,7 +1,7 @@
 import { getDatabase } from './database'
 import { normalizeColor } from '../../utils/colors'
 import { normalizeIcon } from '../../utils/icons'
-import type { Event, EventOccurrence, EventWithOccurrences, RecurrenceRule } from '../../types/event'
+import type { Event, EventKind, EventOccurrence, EventWithOccurrences, RecurrenceRule } from '../../types/event'
 
 interface EventRow {
   id: string
@@ -13,6 +13,7 @@ interface EventRow {
   duration_minutes: number | null
   recurrence: string | null
   recurrence_days: string | null
+  kind: string | null
   created_at: string
   updated_at: string
 }
@@ -25,6 +26,8 @@ interface OccurrenceRow {
   alarm_enabled: number | boolean
   alarm_minutes_before: number
   done_at: string | null
+  timer_started_at: string | null
+  timer_elapsed_ms: number | null
 }
 
 const RECURRENCE_VALUES: RecurrenceRule[] = [
@@ -59,6 +62,10 @@ function mapRecurrence(value: string | null): RecurrenceRule {
     : 'none'
 }
 
+function mapKind(value: string | null): EventKind {
+  return value === 'timer' ? 'timer' : 'normal'
+}
+
 function mapEvent(row: EventRow): Event {
   return {
     id: row.id,
@@ -70,6 +77,7 @@ function mapEvent(row: EventRow): Event {
     durationMinutes: row.duration_minutes ?? null,
     recurrence: mapRecurrence(row.recurrence),
     recurrenceDays: parseRecurrenceDays(row.recurrence_days),
+    kind: mapKind(row.kind),
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   }
@@ -84,13 +92,15 @@ function mapOccurrence(row: OccurrenceRow): EventOccurrence {
     alarmEnabled: Boolean(Number(row.alarm_enabled)),
     alarmMinutesBefore: Number(row.alarm_minutes_before),
     doneAt: row.done_at,
+    timerStartedAt: row.timer_started_at,
+    timerElapsedMs: Number(row.timer_elapsed_ms ?? 0),
   }
 }
 
 const EVENT_COLUMNS =
-  'id, title, description, category, icon, color, duration_minutes, recurrence, recurrence_days, created_at, updated_at'
+  'id, title, description, category, icon, color, duration_minutes, recurrence, recurrence_days, kind, created_at, updated_at'
 const OCCURRENCE_COLUMNS =
-  'id, event_id, date, time, alarm_enabled, alarm_minutes_before, done_at'
+  'id, event_id, date, time, alarm_enabled, alarm_minutes_before, done_at, timer_started_at, timer_elapsed_ms'
 
 export async function fetchEventsWithOccurrences(): Promise<EventWithOccurrences[]> {
   const db = await getDatabase()
@@ -127,7 +137,7 @@ export async function fetchOccurrencesByEvent(eventId: string): Promise<EventOcc
 export async function insertEvent(event: Event): Promise<void> {
   const db = await getDatabase()
   await db.execute(
-    `INSERT INTO events (${EVENT_COLUMNS}) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
+    `INSERT INTO events (${EVENT_COLUMNS}) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
     [
       event.id,
       event.title,
@@ -138,6 +148,7 @@ export async function insertEvent(event: Event): Promise<void> {
       event.durationMinutes,
       event.recurrence,
       encodeRecurrenceDays(event.recurrenceDays),
+      event.kind,
       event.createdAt,
       event.updatedAt,
     ],
@@ -153,6 +164,7 @@ export interface EventFields {
   durationMinutes: number | null
   recurrence: RecurrenceRule
   recurrenceDays: number[]
+  kind: EventKind
   updatedAt: string
 }
 
@@ -160,7 +172,7 @@ export async function updateEventRow(id: string, fields: EventFields): Promise<v
   const db = await getDatabase()
   await db.execute(
     `UPDATE events SET title = $1, description = $2, category = $3, icon = $4, color = $5,
-       duration_minutes = $6, recurrence = $7, recurrence_days = $8, updated_at = $9 WHERE id = $10`,
+       duration_minutes = $6, recurrence = $7, recurrence_days = $8, kind = $9, updated_at = $10 WHERE id = $11`,
     [
       fields.title,
       fields.description ?? null,
@@ -170,6 +182,7 @@ export async function updateEventRow(id: string, fields: EventFields): Promise<v
       fields.durationMinutes,
       fields.recurrence,
       encodeRecurrenceDays(fields.recurrenceDays),
+      fields.kind,
       fields.updatedAt,
       id,
     ],
@@ -179,7 +192,7 @@ export async function updateEventRow(id: string, fields: EventFields): Promise<v
 export async function insertOccurrence(occ: EventOccurrence): Promise<void> {
   const db = await getDatabase()
   await db.execute(
-    `INSERT INTO occurrences (${OCCURRENCE_COLUMNS}) VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+    `INSERT INTO occurrences (${OCCURRENCE_COLUMNS}) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
     [
       occ.id,
       occ.eventId,
@@ -188,6 +201,8 @@ export async function insertOccurrence(occ: EventOccurrence): Promise<void> {
       occ.alarmEnabled ? 1 : 0,
       occ.alarmMinutesBefore,
       occ.doneAt,
+      occ.timerStartedAt,
+      occ.timerElapsedMs,
     ],
   )
 }
@@ -196,6 +211,20 @@ export async function insertOccurrence(occ: EventOccurrence): Promise<void> {
 export async function updateOccurrenceDone(id: string, doneAt: string | null): Promise<void> {
   const db = await getDatabase()
   await db.execute(`UPDATE occurrences SET done_at = $1 WHERE id = $2`, [doneAt, id])
+}
+
+/** Saves the stopwatch state of one occurrence (running since / paused total). */
+export async function updateOccurrenceTimer(
+  id: string,
+  timerStartedAt: string | null,
+  timerElapsedMs: number,
+): Promise<void> {
+  const db = await getDatabase()
+  await db.execute(`UPDATE occurrences SET timer_started_at = $1, timer_elapsed_ms = $2 WHERE id = $3`, [
+    timerStartedAt,
+    timerElapsedMs,
+    id,
+  ])
 }
 
 export async function updateOccurrenceRow(occ: EventOccurrence): Promise<void> {

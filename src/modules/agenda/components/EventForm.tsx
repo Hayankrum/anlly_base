@@ -13,7 +13,7 @@ import {
 } from '../../../utils/recurrence'
 import { REMINDER_OPTIONS, reminderFromValue, reminderValue } from '../../../utils/reminder'
 import { formatDurationLabel, normalizeTimeInput } from '../../../utils/time'
-import type { EventInput, RecurrenceRule } from '../../../types/event'
+import type { EventInput, EventKind, RecurrenceRule } from '../../../types/event'
 
 const CATEGORY_SUGGESTIONS = ['Casa', 'Estudos', 'Trabalho', 'Pessoal', 'Saúde', 'Financeiro']
 
@@ -47,6 +47,7 @@ export function EventForm({ initial, isEdit = false, onSave, onCancel, onDelete 
   )
   const [dates, setDates] = useState<string[]>(initial?.dates ?? [])
   const [time, setTime] = useState(initial?.time ?? '08:00')
+  const [kind, setKind] = useState<EventKind>(initial?.kind ?? 'normal')
   const [alarmEnabled, setAlarmEnabled] = useState(initial?.alarmEnabled ?? false)
   const [alarmMinutesBefore, setAlarmMinutesBefore] = useState(initial?.alarmMinutesBefore ?? 0)
   const [error, setError] = useState<string | null>(null)
@@ -102,6 +103,7 @@ export function EventForm({ initial, isEdit = false, onSave, onCancel, onDelete 
     time: normalizeTimeInput(time) ?? time,
     alarmEnabled,
     alarmMinutesBefore,
+    kind,
   })
 
   const handleSave = async () => {
@@ -268,6 +270,17 @@ export function EventForm({ initial, isEdit = false, onSave, onCancel, onDelete 
           onChange={(e) => setTime(e.target.value)}
           onBlur={() => setTime((current) => normalizeTimeInput(current) ?? current)}
         />
+      </label>
+
+      <label className="field field-inline">
+        <span className="field-label">
+          Tipo
+          {kind === 'timer' && <span className="field-note">medido por cronômetro</span>}
+        </span>
+        <select value={kind} onChange={(e) => setKind(e.target.value as EventKind)}>
+          <option value="normal">Comum</option>
+          <option value="timer">Cronômetro</option>
+        </select>
       </label>
 
       <label className="field field-inline">

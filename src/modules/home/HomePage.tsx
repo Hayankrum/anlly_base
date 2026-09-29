@@ -23,7 +23,7 @@ function clockOf(now: Date, use12h: boolean): string {
 }
 
 export function HomePage() {
-  const { events, loading, error, completeOccurrence, openCreate } = useJourney()
+  const { events, loading, error, completeOccurrence, toggleTimer, openCreate } = useJourney()
   const { push } = useNavigation()
   const { settings } = useSettings()
   const [now, setNow] = useState(() => new Date())
@@ -118,7 +118,8 @@ export function HomePage() {
           <Trail
             items={items}
             onOpen={openDetail}
-            onComplete={(item) => void completeOccurrence(item.id)}
+            onComplete={(item) => void completeOccurrence(item.id, !item.done)}
+            onToggleTimer={(item) => void toggleTimer(item.id)}
           />
         )}
       </section>

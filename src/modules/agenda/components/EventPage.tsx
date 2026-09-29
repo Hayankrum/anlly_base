@@ -27,6 +27,7 @@ function toInput(event: EventWithOccurrences): EventInput {
     time: first?.time ?? '08:00',
     alarmEnabled: first?.alarmEnabled ?? false,
     alarmMinutesBefore: first?.alarmMinutesBefore ?? 0,
+    kind: event.kind,
   }
 }
 

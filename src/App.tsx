@@ -6,6 +6,7 @@ import { DetailPage } from './modules/detail/DetailPage'
 import { SettingsPage } from './pages/SettingsPage/SettingsPage'
 import { BottomNav } from './components/BottomNav/BottomNav'
 import { CreateFab } from './components/Fab/CreateFab'
+import { AlarmPermissionDialog } from './components/Alarm/AlarmPermissionDialog'
 import { SettingsProvider } from './hooks/SettingsProvider'
 import { JourneyProvider } from './hooks/JourneyProvider'
 import { NavigationProvider } from './navigation/NavigationProvider'
@@ -40,6 +41,7 @@ function App() {
             </div>
             <BottomNav />
           </div>
+          <AlarmPermissionDialog />
         </JourneyProvider>
       </NavigationProvider>
     </SettingsProvider>

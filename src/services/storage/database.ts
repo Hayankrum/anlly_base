@@ -68,6 +68,9 @@ async function open(): Promise<Database> {
   await addColumnIfMissing(db, 'events', 'recurrence', 'TEXT')
   await addColumnIfMissing(db, 'events', 'recurrence_days', 'TEXT')
   await addColumnIfMissing(db, 'occurrences', 'done_at', 'TEXT')
+  await addColumnIfMissing(db, 'events', 'kind', "TEXT NOT NULL DEFAULT 'normal'")
+  await addColumnIfMissing(db, 'occurrences', 'timer_started_at', 'TEXT')
+  await addColumnIfMissing(db, 'occurrences', 'timer_elapsed_ms', 'INTEGER NOT NULL DEFAULT 0')
   return db
 }
 

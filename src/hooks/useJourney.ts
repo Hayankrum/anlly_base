@@ -15,6 +15,10 @@ export interface JourneyContextValue {
   removeEvent: (eventId: string) => Promise<void>
   /** Marks one occurrence of an afazer as done (or pending again). */
   completeOccurrence: (occurrenceId: string, done?: boolean) => Promise<void>
+  /** Starts or pauses the stopwatch of one occurrence. */
+  toggleTimer: (occurrenceId: string) => Promise<void>
+  /** Clears the recorded stopwatch time of one occurrence. */
+  resetTimer: (occurrenceId: string) => Promise<void>
   openCreate: () => void
   openEdit: (eventId: string) => void
   closeForm: () => void
@@ -30,6 +34,8 @@ export const JourneyContext = createContext<JourneyContextValue>({
   saveEvent: async () => {},
   removeEvent: async () => {},
   completeOccurrence: async () => {},
+  toggleTimer: async () => {},
+  resetTimer: async () => {},
   openCreate: () => {},
   openEdit: () => {},
   closeForm: () => {},

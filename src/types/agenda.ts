@@ -1,4 +1,4 @@
-import type { EventWithOccurrences } from './event'
+import type { EventKind, EventWithOccurrences } from './event'
 
 /** Everything the agenda renders, supplied by the page that owns the hooks. */
 export interface CalendarSources {
@@ -27,4 +27,8 @@ export interface AgendaDayItem {
   /** true when the occurrence was completed */
   done: boolean
   alarmEnabled?: boolean
+  /** 'timer' rows carry the stopwatch state instead of relying on the slot */
+  kind: EventKind
+  timerStartedAt: string | null
+  timerElapsedMs: number
 }

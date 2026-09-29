@@ -10,6 +10,7 @@ interface TrailProps {
   items: AgendaDayItem[]
   onOpen: (item: AgendaDayItem) => void
   onComplete: (item: AgendaDayItem) => void
+  onToggleTimer: (item: AgendaDayItem) => void
 }
 
 interface Point {
@@ -34,7 +35,7 @@ function buildPath(points: Point[]): string {
  * Duolingo-style journey: circular nodes hanging from a winding road that
  * fills in up to the point the user has reached, ending on a goal marker.
  */
-export function Trail({ items, onOpen, onComplete }: TrailProps) {
+export function Trail({ items, onOpen, onComplete, onToggleTimer }: TrailProps) {
   const firstPending = items.findIndex((item) => !item.done)
 
   const anchors: Point[] = items.map((_, index) => ({
@@ -73,6 +74,7 @@ export function Trail({ items, onOpen, onComplete }: TrailProps) {
             isNext={index === firstPending}
             onOpen={onOpen}
             onComplete={onComplete}
+            onToggleTimer={onToggleTimer}
           />
         ))}
         <TrailGoal reached={firstPending === -1} />

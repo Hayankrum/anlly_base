@@ -1,3 +1,9 @@
+/**
+ * 'normal' happens at the scheduled time; 'timer' is measured by a stopwatch
+ * the user starts/pauses (the real time matters more than the slot).
+ */
+export type EventKind = 'normal' | 'timer'
+
 export type RecurrenceRule =
   | 'none'
   | 'daily'
@@ -23,6 +29,8 @@ export interface Event {
   recurrence: RecurrenceRule
   /** 0 = Monday … 6 = Sunday, only used when recurrence is 'custom' */
   recurrenceDays: number[]
+  /** 'timer' afazeres carry a stopwatch instead of relying on the slot */
+  kind: EventKind
   createdAt: string
   updatedAt: string
 }
@@ -38,6 +46,10 @@ export interface EventOccurrence {
   alarmMinutesBefore: number
   /** ISO timestamp of when the user completed it, null = pending */
   doneAt: string | null
+  /** ISO timestamp of the current stopwatch run, null = not running */
+  timerStartedAt: string | null
+  /** stopwatch time accumulated while paused (ms) */
+  timerElapsedMs: number
 }
 
 export interface EventWithOccurrences extends Event {
@@ -83,4 +95,6 @@ export interface EventInput {
   time: string
   alarmEnabled: boolean
   alarmMinutesBefore: number
+  /** 'timer' afazeres get stopwatch controls instead of a fixed slot */
+  kind: EventKind
 }

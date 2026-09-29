@@ -5,8 +5,10 @@ import {
   deleteEvent,
   loadEvents,
   setOccurrenceDone,
+  setOccurrenceTimer,
   updateEvent,
 } from '../services/eventService'
+import { elapsedMsOf } from '../utils/timer'
 import type { EventInput, EventWithOccurrences } from '../types/event'
 import { JourneyContext, type JourneyContextValue } from './useJourney'
 
@@ -106,7 +108,16 @@ export function JourneyProvider({ children }: { children: ReactNode }) {
         current.map((event) => ({
           ...event,
           occurrences: event.occurrences.map((occ) =>
-            occ.id === occurrenceId ? { ...occ, doneAt: stamp } : occ,
+            occ.id === occurrenceId
+              ? {
+                  ...occ,
+                  doneAt: stamp,
+                  // Finishing banks the run in progress (undo keeps it paused).
+                  ...(done
+                    ? { timerStartedAt: null, timerElapsedMs: elapsedMsOf(occ) }
+                    : null),
+                }
+              : occ,
           ),
         })),
       )
@@ -122,6 +133,62 @@ export function JourneyProvider({ children }: { children: ReactNode }) {
       }
     },
     [notify],
+  )
+
+  /** Writes a new stopwatch state for one occurrence, optimistically. */
+  const patchTimer = useCallback(
+    async (occurrenceId: string, next: { timerStartedAt: string | null; timerElapsedMs: number }) => {
+      const previous = eventsRef.current
+      setEvents((current) =>
+        current.map((event) => ({
+          ...event,
+          occurrences: event.occurrences.map((occ) =>
+            occ.id === occurrenceId ? { ...occ, ...next } : occ,
+          ),
+        })),
+      )
+      try {
+        setError(null)
+        await setOccurrenceTimer(occurrenceId, next.timerStartedAt, next.timerElapsedMs)
+      } catch (err) {
+        setEvents(previous)
+        const msg = messageOf(err)
+        setError(msg)
+        notify(msg)
+      }
+    },
+    [notify],
+  )
+
+  const toggleTimer = useCallback(
+    async (occurrenceId: string) => {
+      const occ = eventsRef.current
+        .flatMap((event) => event.occurrences)
+        .find((candidate) => candidate.id === occurrenceId)
+      if (!occ) return
+      if (occ.timerStartedAt) {
+        await patchTimer(occurrenceId, {
+          timerStartedAt: null,
+          timerElapsedMs: elapsedMsOf(occ),
+        })
+        notify('Cronômetro pausado')
+        return
+      }
+      await patchTimer(occurrenceId, {
+        timerStartedAt: new Date().toISOString(),
+        timerElapsedMs: occ.timerElapsedMs,
+      })
+      notify('✓ Cronômetro iniciado')
+    },
+    [patchTimer, notify],
+  )
+
+  const resetTimer = useCallback(
+    async (occurrenceId: string) => {
+      await patchTimer(occurrenceId, { timerStartedAt: null, timerElapsedMs: 0 })
+      notify('Cronômetro zerado')
+    },
+    [patchTimer, notify],
   )
 
   const openCreate = useCallback(() => setFormTarget({ mode: 'create' }), [])
@@ -178,6 +245,8 @@ export function JourneyProvider({ children }: { children: ReactNode }) {
       saveEvent,
       removeEvent,
       completeOccurrence,
+      toggleTimer,
+      resetTimer,
       openCreate,
       openEdit,
       closeForm,
@@ -192,6 +261,8 @@ export function JourneyProvider({ children }: { children: ReactNode }) {
       saveEvent,
       removeEvent,
       completeOccurrence,
+      toggleTimer,
+      resetTimer,
       openCreate,
       openEdit,
       closeForm,

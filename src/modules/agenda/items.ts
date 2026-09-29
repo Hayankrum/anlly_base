@@ -19,6 +19,9 @@ export function buildAgendaItems(sources: CalendarSources): AgendaDayItem[] {
         color: event.color,
         done: Boolean(occurrence.doneAt),
         alarmEnabled: occurrence.alarmEnabled,
+        kind: event.kind,
+        timerStartedAt: occurrence.timerStartedAt,
+        timerElapsedMs: occurrence.timerElapsedMs,
       })
     }
   }
